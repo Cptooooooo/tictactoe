@@ -1858,12 +1858,16 @@ class Client:
     nm:NetworkManager
 
     def __init__(self):
+        """ Initialize all needed objects """
         self.terminal = Terminal()
         self.display = DisplayManager(self.terminal)
         self.input = InputManager(self.terminal)
         self.cm = ConfigManager(configFile)
         self.gm = GameManager()
         self.nm = NetworkManager(self.cm.getServAddr())
+
+    def run(self):
+        self.gm.startMenu(self)
 
 def test():
 
@@ -1883,31 +1887,11 @@ def test():
 
     time.sleep(1)
 
-def testNM():
-
-    servAddr = ("localhost", 6969)
-    nm = NetworkManager(servAddr)
-    print(nm.connected)
-
-    nm.sendLoadGame(O, [1,1,1,2,2,2,2,2,2])
-    b = nm.recv()[1]
-    print(b)
-
-    nm.sendMove(1,1)
-    b = nm.recv()[1]
-    print(b)
-
-    nm.sendMove(2,2)
-    b = nm.recv()[1]
-    print(b)
-
-    nm.sendMove(2,1)
-    b = nm.recv()[1]
-    print(b)
-
-    nm.sendClose()
 
 if __name__ == "__main__":
 
-    # Testing 
-    test()
+    cl = Client()
+    cl.run()
+    
+
+
