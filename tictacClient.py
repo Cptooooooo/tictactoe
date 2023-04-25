@@ -3,6 +3,10 @@
 # draw logic and cpu opponent's move. The client handles displaying of board,
 # managing saved games and score records through a config file.
 
+# This script uses curses library to grab control over the terminal window and
+# paint each character cell with precision. Since Fred is dead, I left no OOP
+# stone unturned and implemented the whole things using Classes.
+
 
 import socket
 import os
