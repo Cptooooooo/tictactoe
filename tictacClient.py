@@ -288,6 +288,8 @@ class Menu:
                     elif self.__client.cm.selectedGame == len(
                                                 self.__client.cm.savedGames)-1:
                         aR = ' '
+                    if len(self.__client.cm.savedGames) == 1:
+                        aR = ' '
                     self.__message = "%s(%s)%s" % (aL, 
                             self.__client.cm.savedGames[(
                                 self.__client.cm.selectedGame)], aR)
