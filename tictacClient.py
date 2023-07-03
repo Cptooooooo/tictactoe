@@ -1124,12 +1124,13 @@ class NetworkManager:
             if packet != None and packet[0] != closeConn:
                 self.__flush()
 
+            self.conn.close()
             self.connected = False
 
     def __flush(self):
-        """ Recv and discard 1024 bytes from recv stream. """
+        """ Recv and discard 4096 bytes from recv stream. """
         try:
-            self.conn.recv(1024)
+            self.conn.recv(4096)
         except socket.timeout:
             return
 
