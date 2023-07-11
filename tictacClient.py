@@ -855,17 +855,17 @@ class Game:
         # Update Board from reply
         self.board = Board(boardGrid)
 
-        # Move pointer elsewhere if game not over otherwise to Save/Menu button
-        if self.gameOver:
-            self.__pointer[iSave] = True
-            self.__pointer[iBoard] = False
-        else:
+        # Move pointer to an random empty square if the game's not over.
+        if not self.gameOver:
             self.movePointer(random)
 
     def end(self, gameEnd):
         self.gameOver = True
         self.__client.gm.gameOver = True
         self.gameEnd = gameEnd
+        # Move the pointer to Save/Menu button
+        self.__pointer[iSave] = True
+        self.__pointer[iBoard] = False
 
         # Update Score
         if self.gameEnd in [humanWon, cpuWon, drawn]:
