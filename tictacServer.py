@@ -519,11 +519,6 @@ class AI:
 
         return (value, best_move)
 
-        #while True:
-            #move = random.randint(0,8)
-            #if board[move] == empty:
-                #break
-        #return (move%3, move//3)  # (x,y)
 
 def recv_all(conn, bufsize):
     """ Receive bufsize num of bytes from conn socket. The function will return
