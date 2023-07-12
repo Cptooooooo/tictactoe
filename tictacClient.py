@@ -129,6 +129,8 @@ random = 4
 #==============================================================================
 # Networking
 #==============================================================================
+timeOutInSecs = 5
+
 # Packet Types
 newGame = b"NEWG"       # Start a new game       'NEWG'
 endGame = b"ENDG"       # End the current game   'ENDG'
@@ -1097,7 +1099,7 @@ class NetworkManager:
 
         # Create a connected socket with game server
         self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.conn.settimeout(3)
+        self.conn.settimeout(timeOutInSecs)
         try:
             self.conn.connect(serverAddr)
         except socket.timeout:
@@ -1129,10 +1131,20 @@ class NetworkManager:
 
     def __flush(self):
         """ Recv and discard 4096 bytes from recv stream. """
+        if not self.connected:
+            return
+
+        # Set socket to non-blocking mode
+        timeout = self.conn.gettimeout()
+        self.conn.settimeout(0.0)
+
         try:
             self.conn.recv(4096)
-        except socket.timeout:
+        except (socket.timeout, socket.error):
             return
+        finally:
+            # Revert to timeout blocking move
+            self.conn.settimeout(timeout)
 
     def send(self, packType, payload:str):
         """ Send a packet of type `packType` and payload `payload` in format
@@ -1149,6 +1161,9 @@ class NetworkManager:
         """
         if not self.connected:
             raise Exception("nm: sendNewGame()- No connection established")
+
+        # Flush the network buffer
+        self.__flush()
 
         try:
             self.conn.sendall(newGame)
