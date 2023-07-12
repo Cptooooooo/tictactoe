@@ -1,7 +1,7 @@
 # tictactoe
 A tictactoe client implemented using curses in Python.
 
-The server runs the game logic and a cpu player. It can handle only one client at a time and is by default listening at port 6969. The client loads the **tictac.ini** config file to get server address and other info needed for saving games and score.
+The server runs the game logic and a cpu player. It can handle multiple clients at a time and is by default listening at port 6969. The client loads the **tictac.ini** config file to get server address and other info needed for saving games and score.
 
 # Usage
 - tictactoeServer
