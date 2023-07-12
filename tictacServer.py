@@ -36,6 +36,7 @@ import socket
 import random
 import math
 import sys
+import concurrent.futures
 
 
 #==============================================================================
@@ -678,9 +679,10 @@ if __name__ == "__main__":
 
         print("Listening on port %d..." % PORT, end="", flush=True)
         try:
-            while True:
-                conn, addr = listener.accept()
-                handle_client(conn)
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                while True:
+                    conn, addr = listener.accept()
+                    future = executor.submit(handle_client,conn)
         except KeyboardInterrupt:
             pass 
 
