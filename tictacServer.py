@@ -596,6 +596,8 @@ def packet_handler(packet:Packet, conn, game:Game, ai:AI):
             conn.sendall(game.board.to_packet().to_bytes())
 
     elif packet.id == Packet.end_game:
+        if not game.game_on:
+            raise Error.e_no_game()
         game.end_game()
         print("[%d]: Game aborted by client" % (conn.fileno()))
         conn.sendall(game.create_over_packet(ai).to_bytes())
