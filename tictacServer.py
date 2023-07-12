@@ -34,6 +34,7 @@
 
 import socket
 import random
+import math
 import sys
 
 
@@ -199,6 +200,10 @@ class Board:
         """ Return evaluation of self[key]. """
         return self.board[key]
 
+    def copy(self):
+        """ Return a new instance(independent) of Board derived from self """
+        return Board(self.board[:])
+
     @classmethod
     def create_from_packet(self, board_packet:Packet):
         if board_packet.id != Packet.board:
@@ -209,6 +214,14 @@ class Board:
     def to_packet(self):
         return Packet(Packet.board, self.board[:])
 
+    def is_empty(self):
+        for sq in self.board:
+            if sq != empty:
+                break
+        else:
+            return True
+        return False
+
     def move(self, x, y, player):
         # Validate x,y
         if (not (0 <= x <= 3)) or (not (0 <= y <= 3)):
@@ -218,7 +231,8 @@ class Board:
         sq_pos = y*3 + x
         
         if self.board[sq_pos] != empty:
-            raise InvalidMove()
+            print(sq_pos)
+            raise Board.InvalidMove()
         else:
             self.board[sq_pos] = player
 
@@ -320,6 +334,22 @@ class Board:
 
         return (O if n_x > n_o else X)
 
+    def child_boards(self, player):
+        """ A generator method for iterating over all possible board positions
+            from current position for `player`s turn.
+            Returns an iterator to iterate over child `Board` objects.
+            The iterator gives (child:Board, move:int) tuples. (move is move 
+            from parent board to get to the child)
+        """
+        if player not in [X,O]:
+            raise ValueError
+        for sq_pos in range(9):
+            if self[sq_pos] == empty:
+                new_board_list = self.board[:]
+                new_board_list[sq_pos] = player
+                yield (Board(new_board_list), sq_pos)
+                
+
 
 class Game:
     """ Class for representing a game session with a client """
@@ -408,7 +438,10 @@ class Game:
 
     def create_over_packet(self, ai):
         if not self.game_ended:
-            raise RuntimeError("Game hasn't ended.")
+            if self.game_on:
+                raise RuntimeError("Game hasn't ended.")
+            else:
+                raise RuntimeError("No game.")
 
         if self.game_result == ai.player:   # AI won
             winner = "S"
@@ -435,17 +468,60 @@ class AI:
         self.player = player
 
     def best_move(self, board):
-        return AI.ai_move(board, self.player)
+        """ Returns best move as (x,y) """
+        # Move random for first move
+        if board.is_empty():
+            best_move = (0, random.randint(0,8)) # Eval is 0 for any first move
+        else:
+            best_move = AI.minimax(board, self.player, True)
+
+        return (best_move[1]%3, best_move[1]//3, best_move[0])  # (x,y,eval)
     
     @staticmethod
-    def ai_move(board, turn):
-        if all(board[i] != empty for i in range(9)):
-            return -1
-        while True:
-            move = random.randint(0,8)
-            if board[move] == empty:
-                break
-        return (move%3, move//3)  # (x,y)
+    def minimax(board, turn, maximizing_player):
+        """ Min/max algorithm for tic-tac-toe.
+            Returns (minimax_payoff, best_move:int) where `best_move` is the 
+            move from parent node to get to the child_node with the best payoff.
+        """
+        # Check for terminating node and compute payoff
+        game_result = board.get_game_result()
+        if game_result != None:
+            if game_result == draw:
+                payoff = 0
+            elif game_result == turn:
+                payoff = 10
+            else:
+                payoff = -10
+            if not maximizing_player:
+                payoff *= -1
+            return (payoff, -1)
+
+        # Find all child nodes and get the min/max payoff value
+        value = math.inf
+        best_move = -1
+        if maximizing_player:
+            value *= -1
+        for child_node,move in board.child_boards(turn):
+            if maximizing_player:
+                child_payoff = AI.minimax(child_node, O if turn == X else X,
+                                            False)[0]
+                if child_payoff > value:
+                    value = child_payoff
+                    best_move = move
+            else:
+                child_payoff = AI.minimax(child_node, O if turn == X else X,
+                                            True)[0]
+                if child_payoff < value:
+                    value = child_payoff
+                    best_move = move
+
+        return (value, best_move)
+
+        #while True:
+            #move = random.randint(0,8)
+            #if board[move] == empty:
+                #break
+        #return (move%3, move//3)  # (x,y)
 
 def recv_all(conn, bufsize):
     """ Receive bufsize num of bytes from conn socket. The function will return
@@ -500,8 +576,9 @@ def packet_handler(packet:Packet, conn, game:Game, ai:AI):
                                             "X" if ai.player == O else "O"))
         if ai.player == X:
             ai_move = ai.best_move(game.board)
-            game.move(*ai_move)
-            print("[%d]: AI move" % (conn.fileno()), ai_move)
+            game.move(*ai_move[:-1])
+            print("[%d]: AI move" % (conn.fileno()), ai_move[:-1], 
+                    "[%d]" % ai_move[2])
         conn.sendall(game.board.to_packet().to_bytes())
         return
 
@@ -513,8 +590,9 @@ def packet_handler(packet:Packet, conn, game:Game, ai:AI):
         if not game.game_ended:
             if game.turn == ai.player:
                 ai_move = ai.best_move(game.board)
-                game.move(*ai_move)
-                print("[%d]: AI move" % (conn.fileno()), ai_move)
+                game.move(*ai_move[:-1])
+                print("[%d]: AI move" % (conn.fileno()), ai_move[:-1], 
+                        "[%d]" % ai_move[2])
             conn.sendall(game.board.to_packet().to_bytes())
 
     elif packet.id == Packet.end_game:
@@ -524,12 +602,15 @@ def packet_handler(packet:Packet, conn, game:Game, ai:AI):
         return
 
     elif packet.id == Packet.move:
+        if not game.game_on:
+            raise Error.e_no_game()
         print("[%d]: Client move" % (conn.fileno()), packet.content[::-1])
         game.move(*packet.content[::-1])
         if not game.game_ended:
             ai_move = ai.best_move(game.board)
-            game.move(*ai_move)
-            print("[%d]: AI move" % (conn.fileno()), ai_move)
+            game.move(*ai_move[:-1])
+            print("[%d]: AI move" % (conn.fileno()), ai_move[:-1], 
+                    "[%d]" % ai_move[2])
             if not game.game_ended:
                 conn.sendall(game.board.to_packet().to_bytes())
 
