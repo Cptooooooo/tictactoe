@@ -36,6 +36,7 @@ import socket
 import random
 import math
 import sys
+import signal
 import concurrent.futures
 
 
@@ -654,16 +655,23 @@ def handle_client(conn):
             print("[%d]: Error - (%s)" % (conn.fileno(), e.content)) 
             # Send error packet
             conn.sendall(e.to_bytes())
-        except BrokenPipeError:
-            break
-        except ValueError:
+        except (BrokenPipeError, ValueError, KeyboardInterrupt):
             break
 
     # Close the socket
     print("[-%d]: Connection closed to" % conn.fileno(), remote_addr)
     conn.close()
 
+
 if __name__ == "__main__":
+
+    # Hook the interrupt signal to an exit
+
+    def exit_handler(signum, stack_frame):
+        print("Exiting...")
+        exit(0)
+
+    signal.signal(signal.SIGINT, exit_handler)
 
     # Parse arguments
     if len(sys.argv) > 1:
